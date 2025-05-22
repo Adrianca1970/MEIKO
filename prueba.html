@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RED: Círculo Estratégico de Empresarios</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos personalizados para la fuente y el cuerpo */
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow: hidden; /* Evita barras de desplazamiento debido al canvas */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f3f4f6; /* Fondo gris claro de Tailwind */
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1; /* Envía el canvas al fondo */
+        }
+        .content-container {
+            position: relative;
+            z-index: 1; /* Asegura que el contenido esté sobre el canvas */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+            box-sizing: border-box;
+            max-width: 95%; /* Más ancho en móvil */
+            width: 768px; /* Ancho máximo para el contenido en desktop */
+        }
+        .message-box {
+            background-color: rgba(255, 255, 255, 0.95); /* Más opaco */
+            padding: 1.5rem; /* Menos padding en móvil */
+            border-radius: 1.5rem; /* Bordes más redondeados */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            width: 100%;
+            min-height: 250px; /* Altura mínima ajustada para móvil */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.8s ease-in-out, transform 0.8s ease-in-out;
+            opacity: 0; /* Inicialmente oculto */
+            transform: translateY(20px); /* Ligeramente desplazado */
+        }
+        .message-box.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .message-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.75rem;
+            margin-bottom: 1rem; /* Menos margen en móvil */
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .red-logo {
+            font-size: 3rem; /* Logo ligeramente más pequeño en móvil */
+            font-weight: bold;
+            color: #ef4444; /* Rojo de Tailwind */
+            margin-top: 1rem; /* Menos margen en móvil */
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.15); /* Sombra más pronunciada */
+        }
+        .action-button {
+            background-color: #ef4444; /* Rojo de Tailwind */
+            color: white;
+            padding: 0.8rem 2rem; /* Botón más pequeño en móvil */
+            border-radius: 9999px; /* Botón píldora */
+            font-weight: bold;
+            text-decoration: none;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2); /* Sombra más grande */
+            margin-top: 2rem; /* Espacio ajustado */
+            border: none;
+            cursor: pointer;
+            font-size: 1rem; /* Texto más pequeño en móvil */
+        }
+        .action-button:hover {
+            background-color: #dc2626; /* Rojo más oscuro al pasar el ratón */
+            transform: translateY(-3px); /* Elevación más pronunciada */
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+        }
+        .action-button:active {
+            transform: translateY(0);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
+        .start-button-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+        }
+        .start-button {
+            background-color: #3b82f6; /* Azul de Tailwind */
+            color: white;
+            padding: 1rem 2rem; /* Botón de inicio más pequeño en móvil */
+            border-radius: 1.5rem;
+            font-weight: bold;
+            font-size: 1.25rem; /* Texto de inicio más pequeño en móvil */
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+        }
+        .start-button:hover {
+            background-color: #2563eb; /* Azul más oscuro */
+            transform: translateY(-5px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+        }
+        .start-button:active {
+            transform: translateY(0);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Ajustes para pantallas más grandes (desktop) */
+        @media (min-width: 768px) {
+            .message-box {
+                padding: 2.5rem;
+                min-height: 300px;
+            }
+            .message-image {
+                margin-bottom: 1.5rem;
+            }
+            .red-logo {
+                font-size: 3.5rem;
+                margin-top: 1.5rem;
+            }
+            .action-button {
+                padding: 1rem 2.5rem;
+                font-size: 1.125rem;
+                margin-top: 2.5rem;
+            }
+            .start-button {
+                padding: 1.5rem 3rem;
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="backgroundCanvas"></canvas>
+
+    <div class="start-button-container" id="startButtonContainer">
+        <button id="startButton" class="start-button">Iniciar Presentación</button>
+    </div>
+
+    <div class="content-container hidden" id="presentationContainer">
+        <div id="messageBox" class="message-box">
+            <img id="messageImage" class="message-image hidden" alt="Imagen relacionada">
+            <p id="messageText" class="text-xl md:text-3xl font-semibold text-gray-800 leading-relaxed"></p>
+            <div id="redLogoContainer" class="hidden">
+                <div class="red-logo">RED</div>
+            </div>
+            <a id="actionButton" href="#" target="_blank" class="action-button hidden"></a>
+        </div>
+    </div>
+
+    <script>
+        // Mensajes a mostrar en la presentación
+        const messages = [
+            {
+                text: "¿Te gustaría formar parte de un grupo reducido de empresarios que se acompañen mutuamente para pensar, revisar y llevar adelante la estrategia de cada empresa?",
+                // [Image of a small group of diverse entrepreneurs collaborating, brainstorming, or in a meeting, with a sense of camaraderie and shared purpose.]
+                imageUrl: "https://placehold.co/600x400/FEE2E2/EF4444?text=Grupo+de+Empresarios+Colaborando",
+                buttonText: null,
+                buttonLink: null,
+                showLogo: false,
+                delay: 7000 // Duración de esta diapositiva en milisegundos
+            },
+            {
+                text: "¿Te vendría bien contar con una guía práctica y algunos conceptos claves para tomar mejores decisiones sin tener que estudiar una carrera?",
+                // [Image of a hand holding a tablet or book with business diagrams, charts, or a simplified infographic, representing practical knowledge and clear concepts.]
+                imageUrl: "https://placehold.co/600x400/DBEAFE/3B82F6?text=Guía+Práctica+y+Conceptos+Clave",
+                buttonText: null,
+                buttonLink: null,
+                showLogo: false,
+                delay: 7000
+            },
+            {
+                text: "¿Te gustaría tener un espacio digital de consulta permanente con ese grupo, para intercambiar ideas, resolver dudas y sostener el foco en tu estrategia mes a mes?",
+                // [Image of a laptop or smartphone screen displaying a video call or a group chat interface, with diverse faces, emphasizing digital connection and ongoing support.]
+                imageUrl: "https://placehold.co/600x400/D1FAE5/10B981?text=Espacio+Digital+de+Consulta",
+                buttonText: null,
+                buttonLink: null,
+                showLogo: false,
+                delay: 7000
+            },
+            {
+                text: "¡Estás listo para diseñar el futuro de tu empresa en red! Sumate al círculo estratégico de empresarios en acción de la RED.",
+                // [Image of a stylized network or interconnected dots forming a globe or a growth chart, symbolizing a business network and future growth. Maybe a subtle "RED" logo integrated.]
+                imageUrl: "https://placehold.co/600x400/FFE4E6/F87171?text=Diseña+el+Futuro+en+RED",
+                buttonText: null,
+                buttonLink: null,
+                showLogo: true,
+                delay: 7000
+            },
+            {
+                text: "Ingresa al enlace para más info e inscribite.",
+                // [Image of a prominent "CLICK HERE" button or a hand tapping a screen, with a clear call to action and a sense of urgency/opportunity.]
+                imageUrl: "https://placehold.co/600x400/ECFDF5/059669?text=Haz+Click+Aquí+para+Inscribirte",
+                buttonText: "Más Info e Inscribirme",
+                buttonLink: "https://ejemplo.com/tu-enlace-de-inscripcion", // ¡IMPORTANTE! Reemplaza con tu enlace real
+                showLogo: true,
+                delay: 0 // No hay retraso automático en la última diapositiva
+            }
+        ];
+
+        let currentMessageIndex = 0;
+        let presentationTimeout;
+        let speechSynthesisUtterance = null; // Para controlar la voz en off
+
+        const startButtonContainer = document.getElementById('startButtonContainer');
+        const startButton = document.getElementById('startButton');
+        const presentationContainer = document.getElementById('presentationContainer');
+        const messageBox = document.getElementById('messageBox');
+        const messageImage = document.getElementById('messageImage');
+        const messageText = document.getElementById('messageText');
+        const actionButton = document.getElementById('actionButton');
+        const redLogoContainer = document.getElementById('redLogoContainer');
+
+        // Función para iniciar la presentación
+        function startPresentation() {
+            startButtonContainer.classList.add('hidden');
+            presentationContainer.classList.remove('hidden');
+            updateContent();
+        }
+
+        // Función para hablar el texto
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                if (speechSynthesisUtterance) {
+                    window.speechSynthesis.cancel(); // Cancela la voz anterior si está hablando
+                }
+                speechSynthesisUtterance = new SpeechSynthesisUtterance(text);
+                speechSynthesisUtterance.lang = 'es-ES'; // Establece el idioma a español
+                window.speechSynthesis.speak(speechSynthesisUtterance);
+            } else {
+                console.warn("La API de SpeechSynthesis no es compatible con este navegador.");
+            }
+        }
+
+        // Función para actualizar el contenido de la presentación
+        function updateContent() {
+            const current = messages[currentMessageIndex];
+
+            // Oculta el cuadro de mensaje para la transición
+            messageBox.classList.remove('active');
+            clearTimeout(presentationTimeout); // Limpia cualquier timeout anterior
+
+            setTimeout(() => {
+                // Actualiza la imagen
+                if (current.imageUrl) {
+                    messageImage.src = current.imageUrl;
+                    messageImage.classList.remove('hidden');
+                    messageImage.onerror = function() { // Fallback para imágenes no cargadas
+                        this.src = 'https://placehold.co/600x400/CCCCCC/000000?text=Error+al+cargar+imagen';
+                    };
+                } else {
+                    messageImage.classList.add('hidden');
+                }
+
+                messageText.textContent = current.text;
+                speakText(current.text); // Lee el texto
+
+                if (current.buttonText && current.buttonLink) {
+                    actionButton.textContent = current.buttonText;
+                    actionButton.href = current.buttonLink;
+                    actionButton.classList.remove('hidden');
+                } else {
+                    actionButton.classList.add('hidden');
+                }
+
+                if (current.showLogo) {
+                    redLogoContainer.classList.remove('hidden');
+                } else {
+                    redLogoContainer.classList.add('hidden');
+                }
+
+                // Muestra el cuadro de mensaje después de la transición
+                messageBox.classList.add('active');
+
+                // Si no es la última diapositiva, programa la siguiente
+                if (currentMessageIndex < messages.length - 1) {
+                    presentationTimeout = setTimeout(() => {
+                        currentMessageIndex++;
+                        updateContent();
+                    }, current.delay);
+                } else {
+                    // Es la última diapositiva, no hay más transiciones automáticas
+                    // Asegúrate de que el botón de acción esté visible y la voz termine
+                    if (speechSynthesisUtterance) {
+                        speechSynthesisUtterance.onend = () => {
+                            // Puedes añadir alguna acción aquí cuando la voz termina en la última diapositiva
+                        };
+                    }
+                }
+            }, 800); // Coincide con la duración de la transición CSS
+        }
+
+        // Event listener para el botón "Iniciar Presentación"
+        startButton.addEventListener('click', startPresentation);
+
+        // --- Configuración del Canvas para la animación de fondo ---
+        const canvas = document.getElementById('backgroundCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        const numParticles = 70; // Más partículas
+        const particleSize = 2.5; // Partículas ligeramente más grandes
+        const particleSpeed = 0.7; // Velocidad ligeramente mayor
+
+        // Ajusta el tamaño del canvas al de la ventana
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        // Crea las partículas iniciales
+        function createParticles() {
+            particles = [];
+            for (let i = 0; i < numParticles; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    vx: (Math.random() - 0.5) * particleSpeed * 2, // Mayor variación inicial
+                    vy: (Math.random() - 0.5) * particleSpeed * 2,
+                    alpha: Math.random() * 0.6 + 0.4 // Opacidad variable, más visible
+                });
+            }
+        }
+
+        // Dibuja las partículas
+        function drawParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Limpia el canvas
+            for (let i = 0; i < particles.length; i++) {
+                const p = particles[i];
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, particleSize, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(239, 68, 68, ${p.alpha})`; // Color rojo sutil
+                ctx.fill();
+            }
+        }
+
+        // Actualiza la posición de las partículas
+        function updateParticles() {
+            for (let i = 0; i < particles.length; i++) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+
+                // Rebota en los bordes
+                if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+                // Vuelve a aparecer si se sale (para un efecto continuo)
+                if (p.x < -particleSize) p.x = canvas.width + particleSize;
+                if (p.x > canvas.width + particleSize) p.x = -particleSize;
+                if (p.y < -particleSize) p.y = canvas.height + particleSize;
+                if (p.y > canvas.height + particleSize) p.y = -particleSize;
+            }
+        }
+
+        // Bucle de animación del canvas
+        function animateCanvas() {
+            updateParticles();
+            drawParticles();
+            requestAnimationFrame(animateCanvas);
+        }
+
+        // Inicialización al cargar la ventana
+        window.onload = function() {
+            resizeCanvas();
+            createParticles();
+            animateCanvas();
+        };
+
+        // Reajusta el canvas si la ventana cambia de tamaño
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            createParticles(); // Vuelve a crear partículas para adaptarse al nuevo tamaño
+        });
+    </script>
+</body>
+</html>
